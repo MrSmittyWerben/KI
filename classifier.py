@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys, os, argparse, json
+import numpy as np
 import pickle
 
 
@@ -24,14 +25,15 @@ import pickle
 class NaiveBayesDocumentClassifier:
 
     
-    def __init__(self, file_name = None):
+    def __init__(self):
 
         """ The classifier should store all its learned information
             in this 'model' object. Pick whatever form seems appropriate
             to you. Recommendation: use 'pickle' to store/load this model! """
-        if(file_name):
-            self.model = open(str(file_name),"rb")
-            self.data = pickle.load(self.model)
+        self.path = "./dict.pickle"
+        if(os.path.isfile(self.path)):
+            file = open(str(self.path),"rb")
+            self.model = pickle.load(file)
         else:
             self.model = None
 
@@ -104,6 +106,8 @@ class NaiveBayesDocumentClassifier:
         for k,v in bow_labled.items():
             for k1,v1 in v.items():
                 v[k1]= v1/priors.get(k,1)
+                if v[k1] == 0:
+                    v[k1] = 0.0001 #TODO ist das richtig ?
 
         for k, v in priors.items():
             priors[k] = round(float(v / len(labels)), 5)
@@ -114,9 +118,11 @@ class NaiveBayesDocumentClassifier:
         for c in priors:
             print(c, bow_labled[c]["food"])
 
-        self.model = open("dict.pickle","wb")
-        pickle.dump(data, self.model)
-        self.model.close()
+
+        data = [bow_labled,priors]
+        file = open(self.path,"wb")
+        pickle.dump(data, file)
+        file.close()
 
 
 
@@ -143,7 +149,23 @@ class NaiveBayesDocumentClassifier:
                    ...
                  }
         """
-        raise NotImplementedError()
+
+        bow_labled, priors = self.model
+
+        dict = {}
+        for doc_name, value in features.items():
+            dict[doc_name] = {}
+            for prior, prior_value in priors.items():
+                arg = prior_value
+
+                for term in value:
+                    if term in bow_labled[prior]:
+                        arg = arg * bow_labled[prior][term]
+                    #wörter welche nicht in bow_labeld sind -> ignorieren
+                dict[doc_name][prior] = arg
+        print(dict)
+
+
 
         # FIXME: implement model application
 
