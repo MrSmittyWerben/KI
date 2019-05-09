@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import sys, os, argparse, json
-import numpy as np
+import math
+from operator import itemgetter
 import pickle
 
 
@@ -130,7 +131,6 @@ class NaiveBayesDocumentClassifier:
 
         # FIXME: at the end of training, store self.model using pickle.
 
-        
     def apply(self, features):
         """
         applies a classifier to a set of documents. Requires the classifier
@@ -152,25 +152,20 @@ class NaiveBayesDocumentClassifier:
 
         bow_labled, priors = self.model
 
-        dict = {}
-        for doc_name, value in features.items():
-            dict[doc_name] = {}
-            for prior, prior_value in priors.items():
-                arg = prior_value
+        result = {}
+        for doc_name,terms in features.items():
+            argmax = []
+            for label, prob in priors.items():
+                c= 0
+                for term in terms.keys():
+                    c += math.log(bow_labled[label].get(term,1),2)
+                c += math.log(prob,2)
+                argmax.append((c,label))
+            argmax = sorted(argmax,key=lambda tup: tup[0], reverse=True)[:1]
+            result[doc_name] = argmax[0][1]
 
-                for term in value:
-                    if term in bow_labled[prior]:
-                        arg = arg * bow_labled[prior][term]
-                    #wörter welche nicht in bow_labeld sind -> ignorieren
-                dict[doc_name][prior] = arg
-        print(dict)
+        return result
 
-
-
-        # FIXME: implement model application
-
-
-                
 if __name__ == "__main__":
 
     # parse command line arguments (no need to touch)
@@ -202,7 +197,14 @@ if __name__ == "__main__":
         features,labels = read_json('test_filtered.json')
         result = classifier.apply(features)
 
-        # FIXME: measure error rate on 'test.json'
+    correct_guess = 0
+    for doc_name, label in result.items():
+        correct_label = doc_name.split("/")[2]
+        if correct_label == label:
+            correct_guess += 1
+
+    rate = correct_guess/len(result)
+    print(rate)
 
 
 
