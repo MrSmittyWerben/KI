@@ -2,7 +2,6 @@
 
 import sys, os, argparse, json
 import math
-from operator import itemgetter
 import pickle
 
 
@@ -108,7 +107,7 @@ class NaiveBayesDocumentClassifier:
             for k1,v1 in v.items():
                 v[k1]= v1/priors.get(k,1)
                 if v[k1] == 0:
-                    v[k1] = 0.0001 #TODO ist das richtig ?
+                    v[k1] = 0.000000001
 
         for k, v in priors.items():
             priors[k] = round(float(v / len(labels)), 5)
@@ -125,11 +124,6 @@ class NaiveBayesDocumentClassifier:
         pickle.dump(data, file)
         file.close()
 
-
-
-        # FIXME: implement training
-
-        # FIXME: at the end of training, store self.model using pickle.
 
     def apply(self, features):
         """
@@ -151,7 +145,6 @@ class NaiveBayesDocumentClassifier:
         """
 
         bow_labled, priors = self.model
-
         result = {}
         for doc_name,terms in features.items():
             argmax = []
@@ -161,8 +154,8 @@ class NaiveBayesDocumentClassifier:
                     c += math.log(bow_labled[label].get(term,1),2)
                 c += math.log(prob,2)
                 argmax.append((c,label))
-            argmax = sorted(argmax,key=lambda tup: tup[0], reverse=True)[:1]
-            result[doc_name] = argmax[0][1]
+            argmax = sorted(argmax,key=lambda tup: tup[0], reverse=True)[0]
+            result[doc_name] = argmax[1]
 
         return result
 
@@ -196,15 +189,15 @@ if __name__ == "__main__":
     if args.apply:
         features,labels = read_json('test_filtered.json')
         result = classifier.apply(features)
+        correct_guess = 0
+        for doc_name, label in result.items():
+            correct_label = doc_name.split("/")[2]
+            print(correct_label,"-->",label)
+            if correct_label == label:
+                correct_guess += 1
 
-    correct_guess = 0
-    for doc_name, label in result.items():
-        correct_label = doc_name.split("/")[2]
-        if correct_label == label:
-            correct_guess += 1
-
-    rate = correct_guess/len(result)
-    print(rate)
+        rate = correct_guess/len(result)
+        print("Erfolgsrate:",round(rate,4)*100,"%")
 
 
 
