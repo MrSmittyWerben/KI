@@ -147,15 +147,18 @@ class NaiveBayesDocumentClassifier:
         bow_labled, priors = self.model
 
         result = {}
-        for doc_name, value in features.items():
+        for doc_name, words_in_doc in features.items():
             argmax = {}
             for prior, prior_value in priors.items():
                 arg = 0
                 arg = np.log(prior_value)
-                for term in value: #TODO switch value with bow_labled
-                    if term in bow_labled[prior]:
+                for term in words_in_doc: #prev. words_in_doc
+                    if term in bow_labled[prior]: #prev. bow_labled[prior]
                         arg += np.log(bow_labled[prior][term])
                     #wörter welche nicht in bow_labeld sind -> ignorieren
+                    else:
+                        arg += np.log(1 - bow_labled[prior][term])
+
                 argmax.update({prior : arg})
             result.update({doc_name: sorted(argmax.items(), key=lambda kv: kv[1], reverse=True)[0][0] })
 
