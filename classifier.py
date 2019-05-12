@@ -107,17 +107,13 @@ class NaiveBayesDocumentClassifier:
             for k1,v1 in v.items():
                 v[k1]= v1/priors.get(k,1)
                 if v[k1] == 0:
-                    v[k1] = 0.0001 #TODO ist das richtig ?
+                    v[k1] = 10**-100 #da Wsh. nie 0 ist
 
         for k, v in priors.items():
-            priors[k] = round(float(v / len(labels)), 5)
+            priors[k] = float(v / len(labels))
 
-        data = [priors,bow_labled]
-
-        print('XXX')
         for c in priors:
             print(c, bow_labled[c]["food"])
-
 
         data = [bow_labled,priors]
         file = open(self.path,"wb")
@@ -126,9 +122,7 @@ class NaiveBayesDocumentClassifier:
 
 
 
-        # FIXME: implement training
 
-        # FIXME: at the end of training, store self.model using pickle.
 
         
     def apply(self, features):
@@ -152,25 +146,23 @@ class NaiveBayesDocumentClassifier:
 
         bow_labled, priors = self.model
 
-        dict = {}
+        result = {}
         for doc_name, value in features.items():
-            dict[doc_name] = {}
+            argmax = {}
             for prior, prior_value in priors.items():
-                arg = prior_value
-
-                for term in value:
+                arg = 0
+                arg = np.log(prior_value)
+                for term in value: #TODO switch value with bow_labled
                     if term in bow_labled[prior]:
-                        arg = arg * bow_labled[prior][term]
+                        arg += np.log(bow_labled[prior][term])
                     #wörter welche nicht in bow_labeld sind -> ignorieren
-                dict[doc_name][prior] = arg
-        print(dict)
+                argmax.update({prior : arg})
+            result.update({doc_name: sorted(argmax.items(), key=lambda kv: kv[1], reverse=True)[0][0] })
+
+        return result
 
 
 
-        # FIXME: implement model application
-
-
-                
 if __name__ == "__main__":
 
     # parse command line arguments (no need to touch)
@@ -202,7 +194,19 @@ if __name__ == "__main__":
         features,labels = read_json('test_filtered.json')
         result = classifier.apply(features)
 
-        # FIXME: measure error rate on 'test.json'
+        failures = 0
+        for doc_name, label in result.items():
+            doc_label = doc_name.split("/")[2]
+            if label != doc_label:
+                failures += 1
+                print(doc_name, "!=", label)
+            else:
+                print(doc_name,"==", label)
+
+        succes_rate = (1-(failures/len(result)))*100
+
+        print("Erfolgsrate:", succes_rate)
+
 
 
 
