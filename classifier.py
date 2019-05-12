@@ -107,7 +107,7 @@ class NaiveBayesDocumentClassifier:
             for k1,v1 in v.items():
                 v[k1]= v1/priors.get(k,1)
                 if v[k1] == 0:
-                    v[k1] = 10**-100 #da Wsh. nie 0 ist
+                    v[k1] = 0.0000000000000000001 #da Wsh. nie 0 ist
 
         for k, v in priors.items():
             priors[k] = float(v / len(labels))
@@ -156,11 +156,9 @@ class NaiveBayesDocumentClassifier:
                     if term in bow_labled[prior]: #prev. bow_labled[prior]
                         arg += np.log(bow_labled[prior][term])
                     #wörter welche nicht in bow_labeld sind -> ignorieren
-                    else:
-                        arg += np.log(1 - bow_labled[prior][term])
 
                 argmax.update({prior : arg})
-            result.update({doc_name: sorted(argmax.items(), key=lambda kv: kv[1], reverse=True)[0][0] })
+            result.update({doc_name: sorted(argmax.items(), key=lambda kv: kv[1], reverse=True)[0][0]})
 
         return result
 
