@@ -74,44 +74,64 @@ class NaiveBayesDocumentClassifier:
                            ...
                        }
         """
+
+        if self.model is None:
+            priors = {}
+            bow_labled = {}
+        else:
+            bow_labled, priors = self.model
+
         vocab = set()  # Alle Woerter ohne Duplikate aus allen Artikeln
-        for k, v in features.items():
-            for k1, v1 in v.items():
-                vocab.add(k1)
+        for doc_name, terms in features.items():
+            for term in terms:
+                vocab.add(term)
 
-        priors = {}  # Liste mit allen Labeln und derer Wahrscheinlichkeiten
-        for k, v in labels.items():
-            if priors.get(v, 0) != 0:
-                priors[v] += 1
+        # Liste mit allen Labeln und derer vorkommen
+        for doc_name, label in labels.items():
+            if label in priors:
+                priors[label] += 1
             else:
-                priors[v] = 1
+                priors.update({label : 1})
 
 
-        for k, v in features.items():
+        # wort taucht auf oder nicht 1 || 0
+        for doc_name, terms in features.items():
             for term in vocab:
-                if term in v.keys():
-                    v.update({term: 1})
+                if term in terms.keys():
+                    terms[term] = 1
                 else:
-                    v[term] = 0
+                    terms.update({term : 0})
+
+        #häuft in bow_labled das vorkommen eines wortes im entsprechenden label an
+        for doc_name, terms in features.items():
+            if labels[doc_name] not in bow_labled.keys():
+                bow_labled[labels[doc_name]] = dict(terms) #terms entspricht ab Z.103 vocab
+            else: #da die obrige kopie alle bools des Docs mitnimmt braucht es keine runde in der schleife
+                for term, bool in terms.items():
+                    bow_labled[labels[doc_name]][term] += bool
 
 
-        bow_labled = {}
-        for k, v in features.items():
-            if labels[k] not in bow_labled.keys():
-                bow_labled[labels[k]] = v
-            else:
-                for k1, v1 in v.items():
-                    bow_labled[labels[k]][k1] += v1
+        #anzahl des wortes wird durch anzahl des labels geteilt
+        for label, terms in bow_labled.items():
+            for term, number in terms.items():
+                if number == 0:
+                    terms[term] = 0.000000000000000000000000000001 #da Wsh. nie 0 ist
+                else:
+                    terms[term] = number/priors[label]
 
-        for k,v in bow_labled.items():
-            for k1,v1 in v.items():
-                v[k1]= v1/priors.get(k,1)
-                if v[k1] == 0:
-                    v[k1] = 0.0000000000000000001 #da Wsh. nie 0 ist
 
-        for k, v in priors.items():
-            priors[k] = float(v / len(labels))
+        if (sum(priors.values()) == len(labels)):
+            print("Wo ist der Fehler?")
 
+        #wsh eines labels
+        for label, count in priors.items():
+            priors[label] = float(count / len(labels))
+
+
+        print("Important prints", "\nlabels:", len(labels), "\nfeatures:", len(features), "\nprior_val:", sum(priors.values()))
+
+
+        print("Check for food")
         for c in priors:
             print(c, bow_labled[c]["food"])
 
@@ -201,8 +221,6 @@ if __name__ == "__main__":
             if label != doc_label:
                 failures += 1
                 print(doc_name, "!=", label)
-            else:
-                print(doc_name,"==", label)
 
         succes_rate = (1-(failures/len(result)))*100
 
