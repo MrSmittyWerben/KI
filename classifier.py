@@ -20,7 +20,7 @@ import pickle
   3. apply the model to 'test.json' by calling > python classifier.py --apply
 
 """
-
+epsilon = 0.0001
 
 class NaiveBayesDocumentClassifier:
 
@@ -30,6 +30,7 @@ class NaiveBayesDocumentClassifier:
         """ The classifier should store all its learned information
             in this 'model' object. Pick whatever form seems appropriate
             to you. Recommendation: use 'pickle' to store/load this model! """
+
         self.path = "./dict.pickle"
         if(os.path.isfile(self.path)):
             file = open(str(self.path),"rb")
@@ -75,6 +76,7 @@ class NaiveBayesDocumentClassifier:
                        }
         """
 
+
         if self.model is None:
             priors = {}
             bow_labled = {}
@@ -91,7 +93,7 @@ class NaiveBayesDocumentClassifier:
             if label in priors:
                 priors[label] += 1
             else:
-                priors.update({label : 1})
+                priors.update({label: 1})
 
 
         # wort taucht auf oder nicht 1 || 0
@@ -115,25 +117,19 @@ class NaiveBayesDocumentClassifier:
         for label, terms in bow_labled.items():
             for term, number in terms.items():
                 if number == 0:
-                    terms[term] = 0.000000000000000000000000000001 #da Wsh. nie 0 ist
+                    terms[term] = epsilon #da Wsh. nie 0 ist
                 else:
                     terms[term] = number/priors[label]
 
-
-        if (sum(priors.values()) == len(labels)):
-            print("Wo ist der Fehler?")
 
         #wsh eines labels
         for label, count in priors.items():
             priors[label] = float(count / len(labels))
 
 
-        print("Important prints", "\nlabels:", len(labels), "\nfeatures:", len(features), "\nprior_val:", sum(priors.values()))
-
-
         print("Check for food")
         for c in priors:
-            print(c, bow_labled[c]["food"])
+            print(c, bow_labled[c]["team"])
 
         data = [bow_labled,priors]
         file = open(self.path,"wb")
@@ -164,18 +160,21 @@ class NaiveBayesDocumentClassifier:
                  }
         """
 
-        bow_labled, priors = self.model
+        posterior, priors = self.model
 
         result = {}
         for doc_name, words_in_doc in features.items():
             argmax = {}
             for prior, prior_value in priors.items():
-                arg = 0
                 arg = np.log(prior_value)
-                for term in words_in_doc: #prev. words_in_doc
-                    if term in bow_labled[prior]: #prev. bow_labled[prior]
-                        arg += np.log(bow_labled[prior][term])
-                    #wörter welche nicht in bow_labeld sind -> ignorieren
+                # wörter welche nicht in posterior sind -> ignorieren
+                for term in posterior[prior]:
+                    if term in words_in_doc:
+                        arg += np.log(posterior[prior][term])
+                    else:
+                        arg += np.log(1 - posterior[prior][term])
+
+                #arg += sum([np.log(epsilon) for term in words_in_doc if term not in posterior[prior]])
 
                 argmax.update({prior : arg})
             result.update({doc_name: sorted(argmax.items(), key=lambda kv: kv[1], reverse=True)[0][0]})
@@ -217,14 +216,14 @@ if __name__ == "__main__":
 
         failures = 0
         for doc_name, label in result.items():
-            doc_label = doc_name.split("/")[2]
+            doc_label = labels[doc_name] # doc_name.split("/")[2]
             if label != doc_label:
                 failures += 1
                 print(doc_name, "!=", label)
 
-        succes_rate = (1-(failures/len(result)))*100
+        rate = ((failures/len(features)))*100
 
-        print("Erfolgsrate:", succes_rate)
+        print("Fehlerrate:", rate)
 
 
 
